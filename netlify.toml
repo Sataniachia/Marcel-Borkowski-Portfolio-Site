@@ -2,8 +2,8 @@
   # Base directory for the build
   base = "client"
   
-  # Build command
-  command = "npm install && npm run build"
+  # Build command - clean install to fix rollup issue
+  command = "rm -rf node_modules package-lock.json && npm install && npm run build"
   
   # Directory to publish
   publish = "dist"
