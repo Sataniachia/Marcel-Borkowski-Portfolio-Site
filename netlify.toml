@@ -1,0 +1,21 @@
+[build]
+  # Base directory for the build
+  base = "client"
+  
+  # Build command
+  command = "npm install && npm run build"
+  
+  # Directory to publish
+  publish = "dist"
+
+# Redirect all routes to index.html for React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for better performance
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
