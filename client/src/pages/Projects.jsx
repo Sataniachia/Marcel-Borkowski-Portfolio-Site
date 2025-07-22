@@ -1,3 +1,7 @@
+import gradeManagementImage from '../assets/images/School_Task_Management_System_Q8gaKjq6aZ.png';
+import healthcareSRSImage from '../assets/images/srs screenshot.png';
+import portfolioImage from '../assets/images/portfolio site.png';
+
 /**
  * Projects page component displaying portfolio work
  * Shows at least 3 projects with images and descriptions
@@ -12,7 +16,7 @@ export default function Projects() {
       role: "Solo Developer",
       outcome: "Fully functional grade tracking system with data validation and user-friendly interface",
       technologies: "C#, Windows Forms/WPF, Object-Oriented Programming, Exception Handling",
-      image: "https://via.placeholder.com/400x250/667eea/ffffff?text=C%23+Grade+Management" // Placeholder - replace with actual project image
+      image: gradeManagementImage // Actual project screenshot
     },
     {
       id: 2,
@@ -21,7 +25,7 @@ export default function Projects() {
       role: "Systems Analyst & Technical Writer",
       outcome: "Professional-grade SRS documentation ready for development team implementation",
       technologies: "Systems Analysis, UML Diagrams, Use Case Design, Technical Documentation, MVC Architecture",
-      image: "https://via.placeholder.com/400x250/764ba2/ffffff?text=Healthcare+SRS" // Placeholder - replace with actual project image
+      image: healthcareSRSImage // Actual project screenshot
     },
     {
       id: 3,
@@ -30,7 +34,7 @@ export default function Projects() {
       role: "Full-Stack Developer",
       outcome: "Professional portfolio website deployed and ready for showcasing work to potential employers and clients",
       technologies: "React, Node.js, Express, JavaScript, HTML5, CSS3, Responsive Design, Git, Vite",
-      image: "https://via.placeholder.com/400x250/2196F3/ffffff?text=Portfolio+Website" // Placeholder - replace with actual project image
+      image: portfolioImage // Actual project screenshot
     }
   ];
 
