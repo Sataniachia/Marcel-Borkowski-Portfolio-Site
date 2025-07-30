@@ -107,18 +107,46 @@ nav {
   color: white;
   margin-bottom: 2rem;
   border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add a subtle overlay for better text contrast */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+/* Ensure text appears above the overlay */
+.hero > * {
+  position: relative;
+  z-index: 2;
 }
 
 .hero h1 {
   font-size: 3rem;
   margin-bottom: 1rem;
   animation: fadeInUp 1s ease;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .hero p {
   font-size: 1.2rem;
   margin-bottom: 2rem;
   animation: fadeInUp 1s ease 0.2s both;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
 }
 
 .btn-primary {
@@ -133,12 +161,15 @@ nav {
   display: inline-block;
   transition: all 0.3s ease;
   animation: fadeInUp 1s ease 0.4s both;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
 }
 
 .btn-primary:hover {
   background: #ff5252;
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 20px rgba(255, 82, 82, 0.5);
 }
 
 /* About Page Styles */
@@ -320,8 +351,18 @@ nav {
     gap: 1rem;
   }
   
+  .hero {
+    padding: 3rem 1rem;
+  }
+  
   .hero h1 {
     font-size: 2rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+  }
+  
+  .hero p {
+    font-size: 1.1rem;
+    padding: 0 1rem;
   }
   
   .about-container,
