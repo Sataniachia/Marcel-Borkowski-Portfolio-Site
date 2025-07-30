@@ -6,7 +6,9 @@ import {
   updateUserProfile,
   getAllUsers,
   getUserById,
-  deleteUser
+  deleteUser,
+  deleteAllUsers,
+  createUser
 } from '../controllers/userController.js';
 import {
   validateUserRegistration,
@@ -43,28 +45,33 @@ router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, validateUserUpdate, updateUserProfile);
 
 // @route   GET /api/users
-// @desc    Get all users (Admin only)
-// @access  Private/Admin
-router.get('/', protect, admin, getAllUsers);
+// @desc    Get all users
+// @access  Private
+router.get('/', protect, getAllUsers);
 
 // @route   GET /api/users/:id
-// @desc    Get user by ID (Admin only)
-// @access  Private/Admin
-router.get('/:id', protect, admin, getUserById);
+// @desc    Get user by ID
+// @access  Private
+router.get('/:id', protect, getUserById);
 
 // @route   POST /api/users
-// @desc    Create new user (Admin only)
-// @access  Private/Admin
-router.post('/', protect, admin, validateUserRegistration, registerUser);
+// @desc    Create new user
+// @access  Private
+router.post('/', protect, validateUserRegistration, createUser);
 
 // @route   PUT /api/users/:id
-// @desc    Update user by ID (Admin only)
-// @access  Private/Admin
-router.put('/:id', protect, admin, validateUserUpdate, updateUserProfile);
+// @desc    Update user by ID
+// @access  Private
+router.put('/:id', protect, validateUserUpdate, updateUserProfile);
 
 // @route   DELETE /api/users/:id
-// @desc    Delete user (Admin only)
-// @access  Private/Admin
-router.delete('/:id', protect, admin, deleteUser);
+// @desc    Delete user
+// @access  Private
+router.delete('/:id', protect, deleteUser);
+
+// @route   DELETE /api/users
+// @desc    Delete all users
+// @access  Private
+router.delete('/', protect, deleteAllUsers);
 
 export default router;

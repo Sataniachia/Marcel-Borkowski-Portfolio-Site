@@ -1,15 +1,524 @@
 # Marcel Borkowski Portfolio - Complete Technical Documentation
 
 ## Table of Contents
-1. [Overview - What is a MERN Stack?](#overview)
-2. [Project Structure - How Files are Organized](#project-structure)
-3. [Frontend (React) - What Users See](#frontend)
-4. [Backend (Express.js) - The Server Logic](#backend)
-5. [Database (MongoDB) - Where Data Lives](#database)
-6. [How Everything Communicates](#communication)
-7. [Authentication System - Security](#authentication)
-8. [Development Tools - Making Life Easier](#development-tools)
-9. [Deployment - Making it Live](#deployment)
+1. [Course Learning Journey](#course-learning-journey)
+2. [Overview - What is a MERN Stack?](#overview)
+3. [Project Structure - How Files are Organized](#project-structure)
+4. [Frontend (React) - What Users See](#frontend)
+5. [Backend (Express.js) - The Server Logic](#backend)
+6. [Database (MongoDB) - Where Data Lives](#database)
+7. [How Everything Communicates](#communication)
+8. [Authentication System - Security](#authentication)
+9. [Development Tools - Making Life Easier](#development-tools)
+10. [Deployment - Making it Live](#deployment)
+
+---
+
+## Course Learning Journey
+
+This portfolio project demonstrates all the key concepts learned throughout the JavaScript Programming course (Weeks 1-6). Here's how each week's learning outcomes are implemented in this project:
+
+### Week 1: JavaScript Fundamentals & MERN Stack Introduction
+
+#### What We Learned:
+- **ES6+ Features**: Modern JavaScript syntax and capabilities
+- **MERN Stack Architecture**: MongoDB, Express.js, React, Node.js
+- **Module Pattern**: Organizing code into reusable modules
+- **Git Version Control**: Managing project versions and collaboration
+- **Node.js Environment**: Server-side JavaScript runtime
+
+#### How It's Applied in This Project:
+
+**ES6+ Classes & Arrow Functions:**
+```javascript
+// ES6 Class in User.js model
+class User extends mongoose.Schema {
+  constructor() {
+    super({
+      name: { type: String, required: true },
+      email: { type: String, required: true }
+    });
+  }
+}
+
+// Arrow Functions in controllers
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+```
+
+**Destructuring Assignment:**
+```javascript
+// Destructuring in controller functions
+const { name, email, password } = req.body;
+
+// Destructuring in React components
+const { user, setUser } = useContext(UserContext);
+```
+
+**Module Pattern (ES6 Modules):**
+```javascript
+// Exporting from controllers
+export { getAllUsers, createUser, updateUser, deleteUser };
+
+// Importing in routes
+import { getAllUsers, createUser } from '../controllers/userController.js';
+```
+
+**Template Literals:**
+```javascript
+// In error messages and logging
+console.log(`User ${user.name} logged in at ${new Date().toISOString()}`);
+```
+
+### Week 2: React Fundamentals & Component-Based Architecture
+
+#### What We Learned:
+- **Component-Based Architecture**: Building reusable UI components
+- **Virtual DOM**: React's efficient rendering system
+- **JSX Syntax**: Combining HTML-like syntax with JavaScript
+- **Unidirectional Data Flow**: Data flows down, events flow up
+
+#### How It's Applied in This Project:
+
+**Component-Based Architecture:**
+```jsx
+// Reusable Navbar component
+const Navbar = () => {
+  return (
+    <nav className="navbar">
+      <Logo />
+      <NavigationLinks />
+    </nav>
+  );
+};
+
+// Page components that use the Navbar
+const Home = () => {
+  return (
+    <div>
+      <Navbar />
+      <main>Welcome to my portfolio</main>
+    </div>
+  );
+};
+```
+
+**JSX Syntax & JavaScript Integration:**
+```jsx
+// JSX combining HTML-like syntax with JavaScript logic
+const ProjectCard = ({ project }) => {
+  return (
+    <div className="project-card">
+      <h3>{project.title}</h3>
+      <p>{project.description}</p>
+      {project.isCompleted && <span className="completed">✓ Completed</span>}
+      <button onClick={() => viewProject(project.id)}>
+        View Details
+      </button>
+    </div>
+  );
+};
+```
+
+**Virtual DOM Benefits:**
+- React automatically optimizes rendering by comparing the virtual DOM
+- Only updates the parts of the page that actually changed
+- Makes your portfolio website fast and responsive
+
+**Unidirectional Data Flow:**
+```jsx
+// Data flows down through props
+const Portfolio = () => {
+  const [projects, setProjects] = useState([]);
+  
+  return <ProjectList projects={projects} onProjectClick={handleProjectClick} />;
+};
+
+// Events flow up through callbacks
+const ProjectList = ({ projects, onProjectClick }) => {
+  return (
+    <div>
+      {projects.map(project => 
+        <ProjectCard 
+          key={project.id} 
+          project={project} 
+          onClick={() => onProjectClick(project.id)} 
+        />
+      )}
+    </div>
+  );
+};
+```
+
+### Week 3: Node.js & Express.js Fundamentals
+
+#### What We Learned:
+- **Node.js Runtime Environment**: Server-side JavaScript execution
+- **Event-Driven Programming**: Asynchronous, non-blocking operations
+- **Express.js Framework**: Web application framework for Node.js
+- **MVC Pattern**: Model-View-Controller architecture
+- **Middleware Pattern**: Functions that execute during request-response cycle
+
+#### How It's Applied in This Project:
+
+**Event-Driven Programming:**
+```javascript
+// Asynchronous database operations
+const createUser = async (req, res) => {
+  try {
+    // Non-blocking database save
+    const newUser = await User.create(req.body);
+    
+    // Event-driven response
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: newUser
+    });
+  } catch (error) {
+    // Error event handling
+    res.status(400).json({
+      success: false,
+      message: 'Failed to create user',
+      error: error.message
+    });
+  }
+};
+```
+
+**MVC Pattern Implementation:**
+```
+Models (M):     User.js, Contact.js, Project.js, Qualification.js
+Views (V):      React components (Home.jsx, About.jsx, etc.)
+Controllers (C): userController.js, contactController.js, etc.
+```
+
+**Middleware Pattern:**
+```javascript
+// Authentication middleware
+export const protect = async (req, res, next) => {
+  try {
+    // Extract and verify token
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user to request object
+    req.user = await User.findById(decoded.id);
+    
+    // Continue to next middleware/controller
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Not authorized' });
+  }
+};
+
+// Validation middleware
+export const validateUser = [
+  body('name').notEmpty().withMessage('Name is required'),
+  body('email').isEmail().withMessage('Valid email required'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  }
+];
+```
+
+### Week 4: REST API Development & HTTP Methods
+
+#### What We Learned:
+- **REST API Architecture**: Representational State Transfer principles
+- **HTTP Methods**: GET, POST, PUT, DELETE operations
+- **Express Routing**: Organizing API endpoints
+- **MongoDB Integration**: NoSQL database operations
+- **API Testing**: Using tools like Postman
+
+#### How It's Applied in This Project:
+
+**RESTful API Design:**
+```javascript
+// Contacts API - Following REST conventions
+router.get('/api/contacts', getAllContacts);        // Read all
+router.get('/api/contacts/:id', getContactById);    // Read one
+router.post('/api/contacts', createContact);        // Create
+router.put('/api/contacts/:id', updateContact);     // Update
+router.delete('/api/contacts/:id', deleteContact);  // Delete one
+router.delete('/api/contacts', deleteAllContacts);  // Delete all
+```
+
+**HTTP Status Codes & Responses:**
+```javascript
+// GET - Retrieve data
+export const getAllContacts = async (req, res) => {
+  try {
+    const contacts = await Contact.find({});
+    res.status(200).json({  // 200 OK
+      success: true,
+      count: contacts.length,
+      data: contacts
+    });
+  } catch (error) {
+    res.status(500).json({  // 500 Internal Server Error
+      success: false,
+      message: 'Server Error'
+    });
+  }
+};
+
+// POST - Create new resource
+export const createContact = async (req, res) => {
+  try {
+    const contact = await Contact.create(req.body);
+    res.status(201).json({  // 201 Created
+      success: true,
+      message: 'Contact created successfully',
+      data: contact
+    });
+  } catch (error) {
+    res.status(400).json({  // 400 Bad Request
+      success: false,
+      message: 'Validation Error'
+    });
+  }
+};
+```
+
+### Week 5: MongoDB & Database Operations
+
+#### What We Learned:
+- **NoSQL Concepts**: Document-based database design
+- **MongoDB Document Model**: BSON documents, collections, databases
+- **Mongoose ODM**: Object Document Mapping for MongoDB
+- **Schema Design**: Defining data structure and validation
+- **CRUD Operations**: Create, Read, Update, Delete with MongoDB
+
+#### How It's Applied in This Project:
+
+**MongoDB Document Structure:**
+```javascript
+// User document example in MongoDB
+{
+  "_id": ObjectId("507f1f77bcf86cd799439011"),
+  "name": "Marcel Borkowski",
+  "email": "marcel@portfolio.com",
+  "password": "$2b$12$xyz...abc",  // Hashed password
+  "created": ISODate("2025-01-30T10:30:00Z"),
+  "updated": ISODate("2025-01-30T10:30:00Z"),
+  "__v": 0
+}
+```
+
+**Mongoose Schema Design:**
+```javascript
+// User.js - Schema with validation and middleware
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Name is required'],
+    trim: true,
+    maxlength: [100, 'Name cannot exceed 100 characters']
+  },
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    lowercase: true,
+    match: [/^\w+@\w+\.\w{2,3}$/, 'Please enter a valid email']
+  },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: [6, 'Password must be at least 6 characters'],
+    select: false  // Don't include in queries by default
+  }
+}, {
+  timestamps: { 
+    createdAt: 'created', 
+    updatedAt: 'updated' 
+  }
+});
+
+// Schema middleware for password hashing
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+```
+
+**CRUD Operations with Mongoose:**
+```javascript
+// Create
+const newUser = await User.create({
+  name: 'John Doe',
+  email: 'john@example.com',
+  password: 'password123'
+});
+
+// Read
+const users = await User.find({});
+const user = await User.findById(userId);
+const userByEmail = await User.findOne({ email: 'john@example.com' });
+
+// Update
+const updatedUser = await User.findByIdAndUpdate(
+  userId, 
+  { name: 'John Smith' },
+  { new: true, runValidators: true }
+);
+
+// Delete
+await User.findByIdAndDelete(userId);
+await User.deleteMany({}); // Delete all
+```
+
+### Week 6: Authentication & Security
+
+#### What We Learned:
+- **Authentication Methods**: JWT, OAuth2, Passport.js, 2FA
+- **JWT (JSON Web Tokens)**: Stateless authentication
+- **Password Security**: Hashing and salting with bcrypt
+- **Authorization**: Protecting routes and resources
+- **Security Best Practices**: Input validation, HTTPS, environment variables
+
+#### How It's Applied in This Project:
+
+**JWT Authentication Flow:**
+```javascript
+// 1. User Login - Generate JWT
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Find user and include password for comparison
+    const user = await User.findOne({ email }).select('+password');
+    
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id }, 
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Login failed'
+    });
+  }
+};
+```
+
+**JWT Token Structure:**
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3ZjFmNzdiY2Y4NmNkNzk5NDM5MDExIiwiaWF0IjoxNzM4MzI5NjAwLCJleHAiOjE3NDEwMDc2MDB9.signature
+
+Header:  { "alg": "HS256", "typ": "JWT" }
+Payload: { "id": "67f1f77bcf86cd799439011", "iat": 1738329600, "exp": 1741007600 }
+Signature: HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), secret)
+```
+
+**Password Hashing with bcrypt:**
+```javascript
+// Pre-save middleware in User model
+userSchema.pre('save', async function(next) {
+  // Only hash if password is modified
+  if (!this.isModified('password')) return next();
+  
+  try {
+    // Generate salt and hash password
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+    this.password = await bcrypt.hash(this.password, saltRounds);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Instance method to verify password
+userSchema.methods.matchPassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+```
+
+**Route Protection Middleware:**
+```javascript
+// Protect middleware - validates JWT tokens
+export const protect = async (req, res, next) => {
+  try {
+    let token;
+    
+    // Extract token from Authorization header
+    if (req.headers.authorization?.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized, no token'
+      });
+    }
+    
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user from token
+    req.user = await User.findById(decoded.id).select('-password');
+    
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized, user not found'
+      });
+    }
+    
+    next(); // Continue to protected route
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      message: 'Not authorized, invalid token'
+    });
+  }
+};
+```
+
+**Security Best Practices Implemented:**
+- Environment variables for secrets (`.env` file)
+- Input validation with express-validator
+- Password hashing with bcrypt
+- JWT token expiration
+- CORS configuration
+- Mongoose prevents NoSQL injection
+- Error handling without exposing sensitive data
 
 ---
 
@@ -686,29 +1195,102 @@ Expected Response:
 
 ## Summary
 
-Your portfolio website is a full-stack web application that demonstrates modern web development practices:
+Your portfolio website is a comprehensive full-stack web application that demonstrates all the key concepts learned throughout the JavaScript Programming course:
+
+### **Course Learning Integration:**
+
+**Week 1 - JavaScript Fundamentals:**
+- ✅ ES6+ features: Classes, arrow functions, destructuring, template literals
+- ✅ Module pattern with ES6 import/export
+- ✅ MERN stack architecture implementation
+- ✅ Node.js runtime environment
+- ✅ Git version control throughout development
+
+**Week 2 - React & Component Architecture:**
+- ✅ Component-based architecture with reusable UI components
+- ✅ JSX syntax combining HTML-like markup with JavaScript logic
+- ✅ Virtual DOM for efficient rendering
+- ✅ Unidirectional data flow pattern
+- ✅ Portfolio website displaying your work and skills
+
+**Week 3 - Node.js & Express.js:**
+- ✅ Node.js runtime for server-side JavaScript execution
+- ✅ Event-driven programming with async/await
+- ✅ Express.js web framework with routing
+- ✅ MVC pattern implementation
+- ✅ Middleware pattern for authentication and validation
+
+**Week 4 - REST API Development:**
+- ✅ RESTful API design principles
+- ✅ HTTP methods: GET, POST, PUT, DELETE
+- ✅ Express routing for API endpoints
+- ✅ MongoDB integration with Mongoose
+- ✅ API testing with tools like Postman
+
+**Week 5 - MongoDB & Database Operations:**
+- ✅ NoSQL document-based database design
+- ✅ MongoDB document model with BSON
+- ✅ Mongoose schemas with validation and middleware
+- ✅ Full CRUD operations implementation
+- ✅ Database relationships and indexing
+
+**Week 6 - Authentication & Security:**
+- ✅ JWT token-based authentication
+- ✅ Password hashing with bcrypt
+- ✅ Route protection middleware
+- ✅ Security best practices implementation
+- ✅ Input validation and error handling
+
+### **Technical Architecture:**
 
 ### **Frontend (React)**: 
 - 5 responsive pages showcasing your portfolio
-- Interactive contact form
+- Interactive contact form with validation
 - Modern navigation and UI components
+- Component-based architecture for reusability
 
 ### **Backend (Express.js)**:
-- RESTful API with full CRUD operations
-- Secure authentication system
-- Input validation and error handling
+- RESTful API with full CRUD operations (24 endpoints total)
+- JWT-based authentication system
+- Comprehensive input validation and error handling
+- MVC pattern with organized controllers, routes, and middleware
 
 ### **Database (MongoDB)**:
 - Cloud-hosted on MongoDB Atlas
-- 4 collections for different data types
-- Automatic timestamps and indexing
+- 4 collections: contacts, projects, qualifications, users
+- Mongoose schemas with validation and pre-save middleware
+- Automatic timestamps and indexing for performance
 
-### **Integration**:
-- Seamless communication between frontend and backend
-- Real-time development with hot reloading
-- Production-ready deployment setup
+### **Security & Best Practices**:
+- Password hashing with bcrypt (12 salt rounds)
+- JWT tokens with expiration
+- Protected routes with authentication middleware
+- Input validation with express-validator
+- Environment variables for sensitive data
+- CORS configuration for cross-origin requests
 
-This architecture gives you a solid foundation for building any web application and demonstrates industry-standard practices that employers look for.
+### **Development Tools & Workflow**:
+- Vite for fast React development with hot reloading
+- Nodemon for automatic server restarts
+- Concurrently for running frontend and backend simultaneously
+- Git version control with meaningful commit history
+- ESLint for code quality and consistency
+
+This project demonstrates a complete understanding of modern web development practices and serves as a solid foundation for building scalable web applications. Every concept learned in the course is practically applied and working together to create a professional portfolio website.
+
+### **Key Technologies Mastered:**
+1. **JavaScript ES6+**: Modern syntax, classes, modules, async/await
+2. **React**: Component-based UI development with hooks and state management
+3. **Node.js**: Server-side JavaScript runtime environment
+4. **Express.js**: Web framework with routing and middleware
+5. **MongoDB**: NoSQL database with document-based storage
+6. **Mongoose**: ODM for MongoDB with schema validation
+7. **JWT**: Token-based authentication for secure API access
+8. **bcrypt**: Password hashing for user security
+9. **Git**: Version control for project management
+10. **REST API**: Architectural style for web services
+
+This comprehensive implementation showcases industry-standard practices that employers look for and provides a strong foundation for future web development projects. 🚀
 
 ---
 

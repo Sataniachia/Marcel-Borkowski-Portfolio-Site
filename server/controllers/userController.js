@@ -30,7 +30,7 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    const { firstname, lastname, email, password } = req.body;
+    const { name, email, password } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -43,8 +43,7 @@ export const registerUser = async (req, res) => {
     
     // Create new user
     const newUser = new User({
-      firstname,
-      lastname,
+      name,
       email,
       password
     });
@@ -59,11 +58,10 @@ export const registerUser = async (req, res) => {
       message: 'User registered successfully',
       data: {
         _id: savedUser._id,
-        firstname: savedUser.firstname,
-        lastname: savedUser.lastname,
+        name: savedUser.name,
         email: savedUser.email,
-        isAdmin: savedUser.isAdmin,
-        createdAt: savedUser.createdAt
+        created: savedUser.created,
+        updated: savedUser.updated
       },
       token
     });
@@ -82,6 +80,72 @@ export const registerUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server Error: Unable to register user',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Create new user
+// @route   POST /api/users
+// @access  Private
+export const createUser = async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { name, email, password } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email'
+      });
+    }
+    
+    // Create new user
+    const newUser = new User({
+      name,
+      email,
+      password
+    });
+    
+    const savedUser = await newUser.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        _id: savedUser._id,
+        name: savedUser.name,
+        email: savedUser.email,
+        created: savedUser.created,
+        updated: savedUser.updated
+      }
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: validationErrors
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Unable to create user',
       error: error.message
     });
   }
@@ -134,11 +198,10 @@ export const loginUser = async (req, res) => {
       message: 'Login successful',
       data: {
         _id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
+        name: user.name,
         email: user.email,
-        isAdmin: user.isAdmin,
-        lastLogin: user.lastLogin
+        created: user.created,
+        updated: user.updated
       },
       token
     });
@@ -170,13 +233,10 @@ export const getUserProfile = async (req, res) => {
       success: true,
       data: {
         _id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
+        name: user.name,
         email: user.email,
-        isAdmin: user.isAdmin,
-        lastLogin: user.lastLogin,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        created: user.created,
+        updated: user.updated
       }
     });
   } catch (error) {
@@ -214,10 +274,9 @@ export const updateUserProfile = async (req, res) => {
     }
     
     // Update fields
-    const { firstname, lastname, email, password } = req.body;
+    const { name, email, password } = req.body;
     
-    user.firstname = firstname || user.firstname;
-    user.lastname = lastname || user.lastname;
+    user.name = name || user.name;
     user.email = email || user.email;
     
     // If password is provided, hash it
@@ -232,12 +291,10 @@ export const updateUserProfile = async (req, res) => {
       message: 'Profile updated successfully',
       data: {
         _id: updatedUser._id,
-        firstname: updatedUser.firstname,
-        lastname: updatedUser.lastname,
+        name: updatedUser.name,
         email: updatedUser.email,
-        isAdmin: updatedUser.isAdmin,
-        lastLogin: updatedUser.lastLogin,
-        updatedAt: updatedUser.updatedAt
+        created: updatedUser.created,
+        updated: updatedUser.updated
       }
     });
   } catch (error) {
@@ -350,6 +407,28 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server Error: Unable to delete user',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Delete all users
+// @route   DELETE /api/users
+// @access  Private
+export const deleteAllUsers = async (req, res) => {
+  try {
+    const result = await User.deleteMany({});
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} users`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Error deleting all users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Unable to delete users',
       error: error.message
     });
   }
