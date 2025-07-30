@@ -12,9 +12,7 @@ export default function Contact() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
-    phone: '',
-    message: ''
+    email: ''
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,32 +27,49 @@ export default function Contact() {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form processing
-    setTimeout(() => {
-      // Log form data (in real app, this would be sent to a server)
-      console.log('Form submitted:', formData);
-      
-      // Show success message and redirect to home
-      alert(`Thank you ${formData.firstName}! Your message has been received. I'll get back to you soon.`);
-      
-      // Reset form
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        message: ''
+    try {
+      // Submit to your backend API (Vite will proxy to localhost:3000)
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstname: formData.firstName,
+          lastname: formData.lastName,
+          email: formData.email
+        }),
       });
-      
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Form submitted successfully:', result);
+        
+        // Show success message and redirect to home
+        alert(`Thank you ${formData.firstName}! Your contact information has been received.`);
+        
+        // Reset form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: ''
+        });
+        
+        // Redirect to home page
+        navigate('/');
+      } else {
+        throw new Error('Failed to submit form');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Sorry, there was an error submitting your message. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      
-      // Redirect to home page
-      navigate('/');
-    }, 1000);
+    }
   };
 
   return (
@@ -64,8 +79,7 @@ export default function Contact() {
           Get In Touch
         </h1>
         <p style={{ textAlign: 'center', fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', margin: '0 auto 3rem' }}>
-          I'd love to hear from you! Whether you have a project idea, need technical consultation, 
-          or just want to connect, feel free to reach out.
+          I'd love to connect with you! Please provide your contact information below.
         </p>
 
         <div className="contact-container">
@@ -104,7 +118,7 @@ export default function Contact() {
 
           {/* Contact Form */}
           <div className="contact-form">
-            <h2 style={{ color: '#667eea', marginBottom: '2rem' }}>Send Me a Message</h2>
+            <h2 style={{ color: '#667eea', marginBottom: '2rem' }}>Submit Your Contact Information</h2>
             
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -144,30 +158,6 @@ export default function Contact() {
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="phone">Phone Number</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="Optional"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="message">Message *</label>
-                <textarea
-                  id="message"
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  placeholder="Tell me about your project or how I can help you..."
-                  required
-                ></textarea>
-              </div>
-
               <button
                 type="submit"
                 className="btn-primary"
@@ -180,7 +170,7 @@ export default function Contact() {
                   cursor: isSubmitting ? 'not-allowed' : 'pointer'
                 }}
               >
-                {isSubmitting ? 'Sending...' : 'Send Message'}
+                {isSubmitting ? 'Sending...' : 'Submit Contact'}
               </button>
             </form>
           </div>
