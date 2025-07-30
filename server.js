@@ -27,12 +27,14 @@ import contactRoutes from './server/routes/contactRoutes.js';
 import projectRoutes from './server/routes/projectRoutes.js';
 import qualificationRoutes from './server/routes/qualificationRoutes.js';
 import userRoutes from './server/routes/userRoutes.js';
+import authRoutes from './server/routes/authRoutes.js';
 
 // API Routes (these take priority)
 app.use('/api/contacts', contactRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/qualifications', qualificationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/auth', authRoutes);
 
 // Welcome route for root API
 app.get("/api", function (req, res) {
@@ -44,7 +46,8 @@ app.get("/api", function (req, res) {
       contacts: "/api/contacts",
       projects: "/api/projects", 
       qualifications: "/api/qualifications",
-      users: "/api/users"
+      users: "/api/users",
+      auth: "/auth"
     }
   });
 });

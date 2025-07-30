@@ -358,15 +358,15 @@ userSchema.pre('save', async function(next) {
 ```javascript
 // Create
 const newUser = await User.create({
-  name: 'John Doe',
-  email: 'john@example.com',
-  password: 'password123'
+  name: 'Your Name',
+  email: 'your.email@domain.com',
+  password: 'your_secure_password'
 });
 
 // Read
 const users = await User.find({});
 const user = await User.findById(userId);
-const userByEmail = await User.findOne({ email: 'john@example.com' });
+const userByEmail = await User.findOne({ email: 'your.email@domain.com' });
 
 // Update
 const updatedUser = await User.findByIdAndUpdate(
@@ -827,7 +827,7 @@ JWT is like a special ID card that proves you're logged in:
 Your passwords are protected using **bcrypt**:
 ```javascript
 // When user registers:
-const plainPassword = "mypassword123";
+const plainPassword = "user_secure_password";
 const hashedPassword = await bcrypt.hash(plainPassword, 12);
 // Stores: "$2b$12$xyz...abc" (encrypted, unreadable)
 
@@ -1058,9 +1058,9 @@ Postman is like a tool for testing your backend without needing a frontend:
 4. **Set Body** (for POST/PUT):
    ```json
    {
-     "firstname": "Test",
-     "lastname": "User",
-     "email": "test@example.com"
+     "firstname": "Sample",
+     "lastname": "Name",
+     "email": "sample@domain.com"
    }
    ```
 5. **Send Request** and see response
@@ -1278,6 +1278,1066 @@ Your portfolio website is a comprehensive full-stack web application that demons
 
 This project demonstrates a complete understanding of modern web development practices and serves as a solid foundation for building scalable web applications. Every concept learned in the course is practically applied and working together to create a professional portfolio website.
 
+---
+
+## Assignment 3: Full-Stack Integration & Frontend Development
+
+### **Assignment Overview:**
+**Due:** Week #10, July 19th, 2025 @ 11:59 PM  
+**Objective:** Integrate Backend APIs with Frontend, implement CRUD operations, authentication, user roles, forms, and state management for a complete Full-Stack Portfolio Application.
+
+### **Part I - Backend Authentication (Reference: Week 5-6 Slides)**
+
+#### Required Authentication Routes:
+```javascript
+// Required authentication endpoints
+POST /auth/signin    // Sign in user
+GET  /auth/signout   // Sign out user
+```
+
+#### What You Need to Implement:
+
+**1. Authentication Routes & Controllers:**
+```javascript
+// auth routes (server/routes/authRoutes.js)
+import express from 'express';
+import { signin, signout } from '../controllers/authController.js';
+
+const router = express.Router();
+
+router.post('/signin', signin);
+router.get('/signout', signout);
+
+export default router;
+```
+
+**2. Authentication Controller Functions:**
+```javascript
+// authController.js
+export const signin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Find user and verify password
+    const user = await User.findOne({ email }).select('+password');
+    const isValidPassword = await user.matchPassword(password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+    
+    // Generate JWT token
+    const token = generateToken(user._id);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Signin successful',
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Signin failed' });
+  }
+};
+
+export const signout = (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Signout successful'
+  });
+};
+```
+
+**3. Protected Routes Implementation:**
+```javascript
+// Apply protection to routes that need authentication
+router.use('/api/admin/*', protect, admin); // Admin only routes
+router.use('/api/user/*', protect); // User authenticated routes
+```
+
+### **Part II - Frontend Development (Reference: Week 8-10 Slides)**
+
+#### What You Need to Create:
+
+**A. React Forms with State Management:**
+
+**1. SignUp Form Component:**
+```jsx
+// components/forms/SignUpForm.jsx
+import { useState } from 'react';
+
+const SignUpForm = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch('/api/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Store token and redirect
+        localStorage.setItem('token', result.token);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      setErrors({ submit: 'Registration failed' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Form fields with validation */}
+    </form>
+  );
+};
+```
+
+**2. SignIn Form Component:**
+```jsx
+// components/forms/SignInForm.jsx
+const SignInForm = () => {
+  const [credentials, setCredentials] = useState({
+    email: '',
+    password: ''
+  });
+  
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const response = await fetch('/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Signin failed:', error);
+    }
+  };
+  
+  return <form onSubmit={handleSignIn}>{/* Form implementation */}</form>;
+};
+```
+
+**3. Education/Qualification Form:**
+```jsx
+// components/forms/QualificationForm.jsx
+const QualificationForm = ({ qualification, onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState({
+    title: qualification?.title || '',
+    institution: qualification?.institution || '',
+    completion: qualification?.completion || '',
+    description: qualification?.description || ''
+  });
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const url = qualification 
+      ? `/api/qualifications/${qualification._id}`
+      : '/api/qualifications';
+    const method = qualification ? 'PUT' : 'POST';
+    
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        onSubmit(result.data);
+      }
+    } catch (error) {
+      console.error('Form submission failed:', error);
+    }
+  };
+  
+  return <form onSubmit={handleSubmit}>{/* Form fields */}</form>;
+};
+```
+
+**4. Project Form:**
+```jsx
+// components/forms/ProjectForm.jsx
+const ProjectForm = ({ project, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    title: project?.title || '',
+    description: project?.description || '',
+    technologies: project?.technologies || '',
+    completion: project?.completion || '',
+    githubUrl: project?.githubUrl || '',
+    liveUrl: project?.liveUrl || ''
+  });
+  
+  // Similar implementation to QualificationForm
+  return <form>{/* Project form fields */}</form>;
+};
+```
+
+**B. Updated Contact Form:**
+You already have a good contact form, but enhance it with better state management:
+
+```jsx
+// Enhanced Contact Form with better validation
+const ContactForm = () => {
+  const [formData, setFormData] = useState({
+    firstname: '',
+    lastname: '',
+    email: ''
+  });
+  
+  const [validation, setValidation] = useState({
+    errors: {},
+    isValid: false
+  });
+  
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.firstname.trim()) errors.firstname = 'First name is required';
+    if (!formData.lastname.trim()) errors.lastname = 'Last name is required';
+    if (!formData.email.includes('@')) errors.email = 'Valid email is required';
+    
+    setValidation({
+      errors,
+      isValid: Object.keys(errors).length === 0
+    });
+    
+    return Object.keys(errors).length === 0;
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('Contact information submitted successfully!');
+        setFormData({ firstname: '', lastname: '', email: '' });
+      }
+    } catch (error) {
+      alert('Submission failed. Please try again.');
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Enhanced form with validation display */}
+    </form>
+  );
+};
+```
+
+**C. CRUD Operations Components:**
+
+**1. Contact Management (Admin):**
+```jsx
+// components/admin/ContactManager.jsx
+const ContactManager = () => {
+  const [contacts, setContacts] = useState([]);
+  const [editingContact, setEditingContact] = useState(null);
+  
+  const fetchContacts = async () => {
+    try {
+      const response = await fetch('/api/contacts', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const result = await response.json();
+      setContacts(result.data);
+    } catch (error) {
+      console.error('Failed to fetch contacts:', error);
+    }
+  };
+  
+  const deleteContact = async (id) => {
+    if (window.confirm('Are you sure you want to delete this contact?')) {
+      try {
+        await fetch(`/api/contacts/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        fetchContacts(); // Refresh list
+      } catch (error) {
+        console.error('Delete failed:', error);
+      }
+    }
+  };
+  
+  return (
+    <div>
+      <h2>Contact Management</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {contacts.map(contact => (
+            <tr key={contact._id}>
+              <td>{contact.firstname} {contact.lastname}</td>
+              <td>{contact.email}</td>
+              <td>
+                <button onClick={() => setEditingContact(contact)}>Edit</button>
+                <button onClick={() => deleteContact(contact._id)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      {editingContact && (
+        <ContactForm 
+          contact={editingContact}
+          onSubmit={() => {
+            setEditingContact(null);
+            fetchContacts();
+          }}
+          onCancel={() => setEditingContact(null)}
+        />
+      )}
+    </div>
+  );
+};
+```
+
+**D. User Role Management:**
+
+**1. Context for User State:**
+```jsx
+// contexts/AuthContext.jsx
+import { createContext, useContext, useState, useEffect } from 'react';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      setUser(JSON.parse(userData));
+    }
+    setLoading(false);
+  }, []);
+  
+  const login = (userData, token) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+  };
+  
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+  
+  return (
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+```
+
+**2. Protected Route Component:**
+```jsx
+// components/ProtectedRoute.jsx
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <div>Loading...</div>;
+  
+  if (!user) return <Navigate to="/signin" />;
+  
+  if (adminOnly && !user.isAdmin) {
+    return <Navigate to="/unauthorized" />;
+  }
+  
+  return children;
+};
+
+export default ProtectedRoute;
+```
+
+### **Part III - Full Stack Integration**
+
+**A. API Integration Examples:**
+
+```jsx
+// utils/api.js - Centralized API calls
+const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : '/api';
+
+export const api = {
+  // Auth
+  signin: (credentials) => 
+    fetch('/auth/signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    }),
+  
+  // Contacts
+  getContacts: () =>
+    fetch(`${API_BASE}/contacts`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    }),
+  
+  createContact: (contactData) =>
+    fetch(`${API_BASE}/contacts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(contactData)
+    }),
+  
+  // Projects
+  getProjects: () => fetch(`${API_BASE}/projects`),
+  
+  // Qualifications
+  getQualifications: () => fetch(`${API_BASE}/qualifications`)
+};
+```
+
+**B. Admin Dashboard Implementation:**
+```jsx
+// pages/AdminDashboard.jsx
+import { useState, useEffect } from 'react';
+import ContactManager from '../components/admin/ContactManager';
+import ProjectManager from '../components/admin/ProjectManager';
+import QualificationManager from '../components/admin/QualificationManager';
+
+const AdminDashboard = () => {
+  const [activeTab, setActiveTab] = useState('contacts');
+  
+  return (
+    <div className="admin-dashboard">
+      <nav className="admin-nav">
+        <button 
+          className={activeTab === 'contacts' ? 'active' : ''}
+          onClick={() => setActiveTab('contacts')}
+        >
+          Contacts
+        </button>
+        <button 
+          className={activeTab === 'projects' ? 'active' : ''}
+          onClick={() => setActiveTab('projects')}
+        >
+          Projects
+        </button>
+        <button 
+          className={activeTab === 'qualifications' ? 'active' : ''}
+          onClick={() => setActiveTab('qualifications')}
+        >
+          Education
+        </button>
+      </nav>
+      
+      <div className="admin-content">
+        {activeTab === 'contacts' && <ContactManager />}
+        {activeTab === 'projects' && <ProjectManager />}
+        {activeTab === 'qualifications' && <QualificationManager />}
+      </div>
+    </div>
+  );
+};
+```
+
+### **External Tasks Required:**
+
+**1. Database Setup:**
+- Create an admin user in MongoDB with `isAdmin: true`
+- You can do this via MongoDB Compass or shell:
+```javascript
+// In MongoDB shell or Compass
+db.users.insertOne({
+  name: "Your Admin Name",
+  email: "your.admin@domain.com",
+  password: "$2b$12$hashed_password_here", // Use bcrypt to hash your password
+  isAdmin: true,
+  created: new Date(),
+  updated: new Date()
+});
+```
+
+**2. Environment Configuration:**
+- Update your `.env` file with any additional configuration
+- Ensure all API routes are properly configured
+
+**3. Testing Requirements:**
+- Test all CRUD operations from the frontend
+- Verify authentication flow works properly
+- Test user roles (admin vs regular user permissions)
+- Ensure forms submit data to backend correctly
+
+**4. Deployment Preparation:**
+- Build the React app for production
+- Configure your server to serve static files
+- Test the full application end-to-end
+
+### **Key Learning Outcomes Being Demonstrated:**
+
+**Week 8:** React forms, props, hooks, state management, dynamic routing  
+**Week 9:** Frontend-Backend connection, React login forms, authentication  
+**Week 10:** Login testing, full-stack evaluation, cloud deployment
+
+This assignment integrates everything you've learned into a complete, functioning full-stack application with proper authentication, user roles, and CRUD operations.
+
+---
+
+### **Week 8: Advanced React Development & Forms**
+
+#### What We Learned:
+- **React Forms**: Best practices for creating efficient and user-friendly input interfaces
+- **React Props**: Seamless data transfer between components
+- **React Hooks**: Advanced state management with useState, useEffect, useContext
+- **Interactive Form Elements**: User interaction and input capturing
+- **Dynamic Routing**: Enhanced navigation with React Router
+
+#### How It's Applied in Assignment 3:
+
+**React Forms with State Management:**
+```jsx
+// Form state management with validation
+const ContactForm = () => {
+  const [formData, setFormData] = useState({
+    firstname: '',
+    lastname: '',
+    email: ''
+  });
+  
+  const [validation, setValidation] = useState({
+    errors: {},
+    touched: {}
+  });
+  
+  // Handle input changes with real-time validation
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (validation.errors[name]) {
+      setValidation(prev => ({
+        ...prev,
+        errors: { ...prev.errors, [name]: '' }
+      }));
+    }
+  };
+  
+  // Form validation logic
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'firstname':
+        return value.trim() ? '' : 'First name is required';
+      case 'email':
+        return /\S+@\S+\.\S+/.test(value) ? '' : 'Email is invalid';
+      default:
+        return '';
+    }
+  };
+};
+```
+
+**Props for Component Communication:**
+```jsx
+// Parent component passing data and callbacks
+const AdminDashboard = () => {
+  const [contacts, setContacts] = useState([]);
+  const [editingContact, setEditingContact] = useState(null);
+  
+  const handleContactUpdate = (updatedContact) => {
+    setContacts(prev => 
+      prev.map(contact => 
+        contact._id === updatedContact._id ? updatedContact : contact
+      )
+    );
+    setEditingContact(null);
+  };
+  
+  return (
+    <div>
+      <ContactList 
+        contacts={contacts}
+        onEdit={setEditingContact}
+        onDelete={handleContactDelete}
+      />
+      {editingContact && (
+        <ContactForm
+          contact={editingContact}
+          onSubmit={handleContactUpdate}
+          onCancel={() => setEditingContact(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Child component receiving props
+const ContactList = ({ contacts, onEdit, onDelete }) => {
+  return (
+    <table>
+      {contacts.map(contact => (
+        <ContactRow
+          key={contact._id}
+          contact={contact}
+          onEdit={() => onEdit(contact)}
+          onDelete={() => onDelete(contact._id)}
+        />
+      ))}
+    </table>
+  );
+};
+```
+
+**Advanced Hooks Usage:**
+```jsx
+// Custom hook for API calls
+const useApi = (url) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        const result = await response.json();
+        setData(result.data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [url]);
+  
+  return { data, loading, error, refetch: () => fetchData() };
+};
+
+// Using the custom hook
+const ContactManager = () => {
+  const { data: contacts, loading, error, refetch } = useApi('/api/contacts');
+  
+  if (loading) return <div>Loading contacts...</div>;
+  if (error) return <div>Error: {error}</div>;
+  
+  return (
+    <div>
+      <h2>Contacts ({contacts.length})</h2>
+      {/* Contact list implementation */}
+    </div>
+  );
+};
+```
+
+**Dynamic Routing Implementation:**
+```jsx
+// App.jsx with protected routes
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          
+          {/* Protected user routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <UserDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Admin-only routes */}
+          <Route 
+            path="/admin/*" 
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminRoutes />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+};
+```
+
+### **Week 9: Frontend-Backend Integration**
+
+#### What We Learned:
+- **API Integration**: Connecting React UI with Express CRUD API
+- **Authentication Forms**: Implementing secure login functionality
+- **Data Flow**: Seamless communication between frontend and backend
+
+#### How It's Applied in Assignment 3:
+
+**API Integration with Error Handling:**
+```jsx
+// API service for consistent error handling
+class ApiService {
+  constructor() {
+    this.baseUrl = process.env.NODE_ENV === 'production' ? '/api' : '/api';
+  }
+  
+  async request(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers
+      },
+      ...options
+    };
+    
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'API request failed');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  }
+  
+  // CRUD operations
+  async getContacts() {
+    return this.request('/contacts');
+  }
+  
+  async createContact(contactData) {
+    return this.request('/contacts', {
+      method: 'POST',
+      body: JSON.stringify(contactData)
+    });
+  }
+  
+  async updateContact(id, contactData) {
+    return this.request(`/contacts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(contactData)
+    });
+  }
+  
+  async deleteContact(id) {
+    return this.request(`/contacts/${id}`, {
+      method: 'DELETE'
+    });
+  }
+}
+
+export const apiService = new ApiService();
+```
+
+**Login Form with Authentication:**
+```jsx
+// SignIn component with full authentication flow
+const SignIn = () => {
+  const [credentials, setCredentials] = useState({
+    email: '',
+    password: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update global auth state
+        login(result.user, result.token);
+        
+        // Redirect based on user role
+        navigate(result.user.isAdmin ? '/admin' : '/dashboard');
+      } else {
+        setError(result.message || 'Login failed');
+      }
+    } catch (error) {
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit} className="signin-form">
+      {error && <div className="error-message">{error}</div>}
+      
+      <div className="form-group">
+        <label htmlFor="email">Email:</label>
+        <input
+          type="email"
+          id="email"
+          value={credentials.email}
+          onChange={(e) => setCredentials(prev => ({
+            ...prev,
+            email: e.target.value
+          }))}
+          required
+        />
+      </div>
+      
+      <div className="form-group">
+        <label htmlFor="password">Password:</label>
+        <input
+          type="password"
+          id="password"
+          value={credentials.password}
+          onChange={(e) => setCredentials(prev => ({
+            ...prev,
+            password: e.target.value
+          }))}
+          required
+        />
+      </div>
+      
+      <button 
+        type="submit" 
+        disabled={isLoading}
+        className="btn-primary"
+      >
+        {isLoading ? 'Signing In...' : 'Sign In'}
+      </button>
+    </form>
+  );
+};
+```
+
+### **Week 10: Testing, Evaluation & Deployment**
+
+#### What We Learned:
+- **Login Testing**: Ensuring robust authentication and authorization
+- **Full-Stack Evaluation**: Testing the complete application system
+- **Cloud Deployment**: Making the application accessible on the internet
+
+#### How It's Applied in Assignment 3:
+
+**Testing Strategy:**
+```jsx
+// Testing utilities for component testing
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { AuthProvider } from '../contexts/AuthContext';
+
+// Test helper for authenticated components
+const renderWithAuth = (component, { user = null } = {}) => {
+  return render(
+    <AuthProvider initialUser={user}>
+      <BrowserRouter>
+        {component}
+      </BrowserRouter>
+    </AuthProvider>
+  );
+};
+
+// Example test for login functionality
+describe('SignIn Component', () => {
+  test('should login user with valid credentials', async () => {
+    // Mock API response
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          user: { _id: '123', name: 'Mock User', email: 'mock@example.com' },
+          token: 'mock-token'
+        })
+      })
+    );
+    
+    renderWithAuth(<SignIn />);
+    
+    // Fill out form
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'mock@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'mock_password' }
+    });
+    
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    
+    // Wait for navigation
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/dashboard');
+    });
+  });
+});
+```
+
+**Deployment Configuration:**
+
+```javascript
+// vite.config.js for production build
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom']
+        }
+      }
+    }
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      },
+      '/auth': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      }
+    }
+  }
+});
+```
+
+```javascript
+// Production server configuration
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'client/dist')));
+  
+  // Handle React Router routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/dist/index.html'));
+  });
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📱 Frontend: http://localhost:${PORT}`);
+  console.log(`🔗 API: http://localhost:${PORT}/api`);
+});
+```
+
 ### **Key Technologies Mastered:**
 1. **JavaScript ES6+**: Modern syntax, classes, modules, async/await
 2. **React**: Component-based UI development with hooks and state management
@@ -1319,4 +2379,3 @@ cd client && npm run dev
 # Use Postman for API testing
 ```
 
-Remember: Every professional web developer started exactly where you are now. The key is understanding how these pieces work together, which you now do! 🚀
