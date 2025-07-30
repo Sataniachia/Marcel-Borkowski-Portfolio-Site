@@ -15,6 +15,25 @@ const generateToken = (id) => {
   });
 };
 
+// @desc    Authenticate user & get token
+// @route   POST /auth/signin
+// @access  Public
+export const signin = async (req, res) => {
+  console.log('🔑 Signin attempt received:', {
+    body: req.body ? 'present' : 'missing',
+    email: req.body?.email ? 'present' : 'missing',
+    timestamp: new Date().toISOString()
+  });
+
+  try {
+
+// Generate JWT Token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '30d'
+  });
+};
+
 // @desc    Authenticate user & get token (signin)
 // @route   POST /auth/signin
 // @access  Public

@@ -42,6 +42,7 @@ app.get("/api", function (req, res) {
     message: "Welcome to Marcel's Portfolio API",
     status: "Server running successfully",
     timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
     endpoints: {
       contacts: "/api/contacts",
       projects: "/api/projects", 
@@ -49,6 +50,17 @@ app.get("/api", function (req, res) {
       users: "/api/users",
       auth: "/auth"
     }
+  });
+});
+
+// Debug route to test auth endpoint
+app.get("/debug", function (req, res) {
+  res.json({
+    message: "Debug route working",
+    authRoute: "/auth/signin",
+    method: "POST",
+    timestamp: new Date().toISOString(),
+    headers: req.headers
   });
 });
 
@@ -66,7 +78,8 @@ app.use(express.static(path.join(__dirname, 'client/dist')));
 
 // Serve React app for all non-API routes (for production)
 app.get('*', (req, res) => {
-  if (!req.url.startsWith('/api')) {
+  // Don't serve React app for API or auth routes
+  if (!req.url.startsWith('/api') && !req.url.startsWith('/auth')) {
     res.sendFile(path.join(__dirname, 'client/dist/index.html'));
   }
 });

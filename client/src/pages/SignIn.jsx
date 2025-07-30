@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../utils/api';
 
 /**
  * SignIn page component
@@ -34,15 +35,7 @@ export default function SignIn() {
     setError('');
     
     try {
-      const response = await fetch('/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
-
-      const result = await response.json();
+      const result = await api.auth.signin(credentials);
 
       if (result.success) {
         // Update auth context
@@ -59,7 +52,7 @@ export default function SignIn() {
       }
     } catch (error) {
       console.error('Error signing in:', error);
-      setError('Network error. Please try again.');
+      setError(error.message || 'Network error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

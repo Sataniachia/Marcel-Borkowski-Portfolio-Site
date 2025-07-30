@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 /**
  * Contact page component with contact information and interactive form
@@ -33,22 +34,14 @@ export default function Contact() {
     setIsSubmitting(true);
     
     try {
-      // Submit to your backend API (Vite will proxy to localhost:3000)
-      const response = await fetch('/api/contacts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstname: formData.firstName,
-          lastname: formData.lastName,
-          email: formData.email,
-          message: formData.message
-        }),
+      const result = await api.contacts.create({
+        firstname: formData.firstName,
+        lastname: formData.lastName,
+        email: formData.email,
+        message: formData.message
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (result.success) {
         console.log('Form submitted successfully:', result);
         
         // Show success message and redirect to home
@@ -64,12 +57,10 @@ export default function Contact() {
         
         // Redirect to home page
         navigate('/');
-      } else {
-        throw new Error('Failed to submit form');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Sorry, there was an error submitting your message. Please try again.');
+      alert(error.message || 'Sorry, there was an error submitting your message. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
