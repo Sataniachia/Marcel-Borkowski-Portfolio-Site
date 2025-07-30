@@ -5,12 +5,22 @@
 
 // Determine the base URL based on environment
 const getBaseUrl = () => {
-  // In production, use relative URLs (same domain)
+  // Check if we're in development mode
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3000';
+  }
+  
+  // In production, check if we have a specific backend URL
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  if (backendUrl) {
+    return backendUrl;
+  }
+  
+  // Fallback: try same domain (for full-stack deployments)
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
   
-  // Fallback
   return '';
 };
 
