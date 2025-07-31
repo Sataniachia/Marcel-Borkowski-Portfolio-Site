@@ -97,6 +97,43 @@ export const api = {
       api.request('/api/users/profile'),
   },
 
+  // Health check endpoint for debugging
+  health: {
+    check: () =>
+      api.request('/api', {
+        method: 'GET',
+      }),
+    
+    testConnection: async () => {
+      try {
+        console.log('🔍 Testing API connection...');
+        console.log('Base URL:', BASE_URL);
+        
+        const response = await fetch(`${BASE_URL}/api`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ API connection successful:', data);
+          return { success: true, data };
+        } else {
+          console.log('❌ API connection failed with status:', response.status);
+          return { success: false, status: response.status };
+        }
+      } catch (error) {
+        console.error('❌ API connection error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+  },
+
   // Contact endpoints
   contacts: {
     getAll: () => api.request('/api/contacts'),

@@ -20,6 +20,13 @@ export default function SignUp() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [debugInfo, setDebugInfo] = useState(null);
+
+  const testConnection = async () => {
+    console.log('🔧 Running connection test...');
+    const result = await api.health.testConnection();
+    setDebugInfo(result);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -268,6 +275,39 @@ export default function SignUp() {
               {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
+
+          {/* Debug section for troubleshooting */}
+          <div style={{ margin: '2rem 0', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#475569' }}>🔧 Connection Diagnostics</h3>
+            <button
+              type="button"
+              onClick={testConnection}
+              style={{
+                padding: '8px 16px',
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                marginBottom: '1rem'
+              }}
+            >
+              Test API Connection
+            </button>
+            
+            {debugInfo && (
+              <div style={{
+                padding: '1rem',
+                background: debugInfo.success ? '#dcfce7' : '#fee2e2',
+                border: `1px solid ${debugInfo.success ? '#bbf7d0' : '#fecaca'}`,
+                borderRadius: '6px',
+                fontFamily: 'monospace',
+                fontSize: '0.875rem'
+              }}>
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              </div>
+            )}
+          </div>
           
           <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
             <p style={{ color: '#64748b' }}>

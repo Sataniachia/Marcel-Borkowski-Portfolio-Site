@@ -1280,6 +1280,675 @@ This project demonstrates a complete understanding of modern web development pra
 
 ---
 
+## Issues Encountered & Solutions - Real-World Debugging Experience
+
+### Overview
+During the development and deployment of this portfolio application, several critical issues were encountered that are common in real-world web development. This section documents these issues, explains why they occurred, and details how they were resolved. Understanding these problems and their solutions is crucial for becoming a proficient full-stack developer.
+
+---
+
+### Issue #1: Login Page Not Functioning on Deployed Site
+
+#### **Problem Description:**
+The login page appeared to load correctly but authentication was not working when users tried to log in on the deployed site.
+
+#### **Why This Issue Existed:**
+```javascript
+// Problem: Inconsistent authentication system setup
+// Multiple approaches to user creation and authentication were present
+
+// Found redundant files:
+// - create-admin.js (standalone admin creation script)
+// - CREATE_ADMIN_USER.js (another admin creation approach)
+// - Confusion about whether admin user existed
+```
+
+#### **Root Causes:**
+1. **Redundant Admin Creation**: Multiple files were attempting to create admin users, leading to confusion about whether the admin account actually existed
+2. **Inconsistent Authentication Flow**: Different parts of the application were using different approaches to handle user authentication
+3. **Environment Confusion**: Development vs production authentication endpoints were not clearly distinguished
+
+#### **How It Was Fixed:**
+
+**Step 1: Verified Existing Admin Credentials**
+```javascript
+// Confirmed that admin user already existed in MongoDB Atlas:
+// Email: admin@portfolio.com
+// Password: admin123
+// This account was working and properly hashed in the database
+```
+
+**Step 2: Removed Redundant Files**
+```bash
+# Deleted unnecessary admin creation files
+rm create-admin.js
+rm CREATE_ADMIN_USER.js
+```
+
+**Step 3: Tested Authentication Flow**
+```javascript
+// Verified the authentication system worked with existing credentials
+// POST /auth/signin with admin@portfolio.com/admin123 returned valid JWT token
+// Login flow was actually working correctly
+```
+
+#### **Key Learning:**
+- Always verify what accounts exist in your database before creating new ones
+- Remove redundant code that can cause confusion during debugging
+- Test with known good credentials before assuming the authentication system is broken
+
+---
+
+### Issue #2: User Registration Failing on Deployed Site
+
+#### **Problem Description:**
+While admin login worked, new users could not register on the deployed website. The registration form would submit but fail silently or with network errors.
+
+#### **Why This Issue Existed:**
+
+**Root Cause Analysis:**
+
+**1. API URL Mismatch in Production:**
+```javascript
+// PROBLEM: SignUp component was using direct fetch() calls with relative URLs
+const response = await fetch('/api/users/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(formData)
+});
+
+// This works in development (localhost:5174 → localhost:3000)
+// But fails in production (Netlify → Render) due to different domains
+```
+
+**2. Password Validation Inconsistency:**
+```javascript
+// FRONTEND: Basic validation
+if (password.length < 6) {
+  setErrors(prev => ({ ...prev, password: 'Password must be at least 6 characters' }));
+}
+
+// BACKEND: More strict validation
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+if (!passwordRegex.test(password)) {
+  return res.status(400).json({
+    success: false,
+    message: 'Password must contain uppercase, lowercase, and number'
+  });
+}
+
+// Frontend allowed "password123" but backend rejected it
+```
+
+**3. Missing Environment-Aware API Handling:**
+```javascript
+// PROBLEM: No centralized API utility for different environments
+// Development: http://localhost:3000/api
+// Production: https://marcel-borkowski-portfolio-site-backend.onrender.com/api
+```
+
+#### **How These Issues Were Fixed:**
+
+**Fix 1: Implemented API Utility with Environment Detection**
+```javascript
+// Created utils/api.js for environment-aware API calls
+const getApiUrl = () => {
+  // In production, use the environment variable
+  if (import.meta.env.PROD) {
+    return import.meta.env.VITE_BACKEND_URL || 'https://marcel-borkowski-portfolio-site-backend.onrender.com';
+  }
+  // In development, use localhost
+  return 'http://localhost:3000';
+};
+
+export const api = {
+  users: {
+    register: async (userData) => {
+      const response = await fetch(`${getApiUrl()}/api/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      return response.json();
+    }
+  }
+};
+```
+
+**Fix 2: Updated SignUp Component to Use API Utility**
+```javascript
+// BEFORE: Direct fetch with relative URL
+const response = await fetch('/api/users/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(formData)
+});
+
+// AFTER: Using centralized API utility
+import { api } from '../utils/api.js';
+
+const result = await api.users.register(formData);
+```
+
+**Fix 3: Enhanced Password Validation in Frontend**
+```javascript
+// Added comprehensive password validation to match backend requirements
+const validatePassword = (password) => {
+  const minLength = password.length >= 6;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  
+  const errors = [];
+  if (!minLength) errors.push('at least 6 characters');
+  if (!hasUpper) errors.push('one uppercase letter');
+  if (!hasLower) errors.push('one lowercase letter');
+  if (!hasNumber) errors.push('one number');
+  
+  return {
+    isValid: minLength && hasUpper && hasLower && hasNumber,
+    message: errors.length ? `Password must contain ${errors.join(', ')}` : ''
+  };
+};
+```
+
+**Fix 4: Added Clear User Feedback**
+```jsx
+// Enhanced UI to show password requirements
+<div className="password-requirements">
+  <p>Password must contain:</p>
+  <ul>
+    <li>At least 6 characters</li>
+    <li>One uppercase letter (A-Z)</li>
+    <li>One lowercase letter (a-z)</li>
+    <li>One number (0-9)</li>
+  </ul>
+</div>
+
+// Example strong passwords: Password123, MySecurePass1, TestUser2025
+```
+
+**Fix 5: Improved Error Handling and Logging**
+```javascript
+// Added detailed error logging for debugging
+try {
+  const result = await api.users.register(formData);
+  
+  if (result.success) {
+    setMessage('Registration successful! You can now log in.');
+    // Reset form
+  } else {
+    console.error('Registration failed:', result);
+    setErrors({ submit: result.message || 'Registration failed' });
+  }
+} catch (error) {
+  console.error('Network error during registration:', error);
+  setErrors({ submit: 'Network error. Please check your connection and try again.' });
+}
+```
+
+#### **Key Learnings:**
+- Environment-specific configuration is crucial for production deployments
+- Frontend and backend validation must be synchronized
+- Centralized API utilities prevent URL mismatch issues
+- Clear user feedback improves the user experience significantly
+
+---
+
+### Issue #3: Development Script Conflicts
+
+#### **Problem Description:**
+The development script was trying to run both the frontend (Vite) and backend (Node.js server) simultaneously, causing port conflicts and confusion.
+
+#### **Why This Issue Existed:**
+```json
+// PROBLEM in client/package.json
+{
+  "scripts": {
+    "dev": "concurrently \"vite\" \"nodemon ../server.js\""
+  }
+}
+
+// This caused:
+// 1. Frontend and backend trying to run on same terminal
+// 2. Potential port conflicts
+// 3. Confusion about which process was which
+// 4. Backend starting from wrong directory context
+```
+
+#### **How It Was Fixed:**
+```json
+// SOLUTION: Separated concerns
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  }
+}
+
+// Now:
+// - Frontend: npm run dev (in client/ directory)
+// - Backend: npm start (in root directory)
+// - Clear separation of responsibilities
+```
+
+#### **Key Learning:**
+- Separate frontend and backend development processes
+- Use appropriate working directories for each part of the stack
+- Keep development scripts focused on their specific responsibilities
+
+---
+
+### Issue #4: Environment Variables and Production Configuration
+
+#### **Problem Description:**
+API calls were failing in production because the frontend didn't know how to reach the backend server on Render.
+
+#### **Why This Issue Existed:**
+```javascript
+// PROBLEM: Hardcoded localhost URLs
+const response = await fetch('http://localhost:3000/api/users/register');
+
+// This works in development but fails in production where:
+// Frontend is on: https://your-site.netlify.app
+// Backend is on: https://your-backend.onrender.com
+```
+
+#### **How It Was Fixed:**
+
+**Step 1: Created Environment Configuration**
+```bash
+# client/.env.production
+VITE_BACKEND_URL=https://marcel-borkowski-portfolio-site-backend.onrender.com
+```
+
+**Step 2: Updated API Utility to Use Environment Variables**
+```javascript
+// utils/api.js
+const getApiUrl = () => {
+  if (import.meta.env.PROD) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  return 'http://localhost:3000';
+};
+```
+
+#### **Key Learning:**
+- Environment variables are essential for different deployment environments
+- Never hardcode URLs that will change between environments
+- Use build tools' environment variable features (Vite's import.meta.env)
+
+---
+
+### Issue #5: Git Integration and Deployment Workflow
+
+#### **Problem Description:**
+Changes needed to be deployed to test on the live site, requiring proper Git workflow management.
+
+#### **How It Was Resolved:**
+
+**Implemented Proper Git Workflow:**
+```bash
+# 1. Check current status
+git status
+
+# 2. Stage all changes
+git add .
+
+# 3. Commit with descriptive message
+git commit -m "🔧 Fix user registration on deployed site
+
+- Update SignUp component to use api.users.register() instead of direct fetch()
+- Enhance password validation to match backend requirements (uppercase+lowercase+number)
+- Add helpful UI text showing password requirements with examples
+- Improve error handling with console logging for debugging
+- Fix client package.json dev script to only run Vite
+- Remove redundant admin creation files (create-admin.js, CREATE_ADMIN_USER.js)
+
+Fixes: User registration now works with strong passwords in production
+Examples: Password123, MySecurePass1, TestUser2025"
+
+# 4. Push to trigger automatic deployment
+git push origin main
+```
+
+#### **Key Learning:**
+- Descriptive commit messages help track what was fixed and why
+- Automatic deployment through Git integration streamlines the development process
+- Testing on production requires proper deployment workflow
+
+---
+
+## Common Development Patterns & Best Practices Learned
+
+### 1. **Environment-Aware Configuration**
+```javascript
+// Pattern: Always check environment and configure accordingly
+const config = {
+  apiUrl: process.env.NODE_ENV === 'production' 
+    ? process.env.VITE_BACKEND_URL 
+    : 'http://localhost:3000',
+  
+  mongoUri: process.env.NODE_ENV === 'production'
+    ? process.env.MONGODB_URI
+    : 'mongodb://localhost:27017/portfolio'
+};
+```
+
+### 2. **Centralized API Management**
+```javascript
+// Pattern: Create reusable API utilities
+export const api = {
+  baseUrl: getApiUrl(),
+  
+  async request(endpoint, options = {}) {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    
+    return response.json();
+  },
+  
+  users: {
+    register: (data) => api.request('/api/users/register', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+};
+```
+
+### 3. **Comprehensive Error Handling**
+```javascript
+// Pattern: Handle errors at multiple levels
+try {
+  const result = await api.users.register(formData);
+  
+  if (result.success) {
+    handleSuccess(result);
+  } else {
+    handleApiError(result);
+  }
+} catch (networkError) {
+  handleNetworkError(networkError);
+} finally {
+  setLoading(false);
+}
+```
+
+### 4. **Validation Synchronization**
+```javascript
+// Pattern: Keep frontend and backend validation in sync
+const passwordValidation = {
+  minLength: 6,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumber: true
+};
+
+// Use same validation object in both frontend and backend
+const validatePassword = (password) => {
+  return {
+    isValid: password.length >= passwordValidation.minLength &&
+             /[A-Z]/.test(password) &&
+             /[a-z]/.test(password) &&
+             /\d/.test(password)
+  };
+};
+```
+
+---
+
+## Debugging Methodology Applied
+
+### 1. **Systematic Problem Identification**
+- Start with the error message or user complaint
+- Reproduce the issue in both development and production
+- Check browser console for frontend errors
+- Check server logs for backend errors
+
+### 2. **Isolation Testing**
+- Test individual components (frontend forms, API endpoints, database connections)
+- Use tools like Postman to test API endpoints independently
+- Test with known good data (like existing admin credentials)
+
+### 3. **Environment Verification**
+- Confirm environment variables are properly set
+- Verify database connections in each environment
+- Check that all services are running and accessible
+
+### 4. **Progressive Enhancement**
+- Fix one issue at a time
+- Test each fix before moving to the next
+- Document what was changed and why
+
+### 5. **Comprehensive Testing**
+- Test with various inputs (valid and invalid)
+- Test edge cases (empty forms, long inputs, special characters)
+- Test user flow from start to finish
+
+---
+
+### Issue #6: Persistent Network Errors in Production User Registration (Ongoing)
+
+#### **Problem Description:**
+Despite implementing the API utility and environment configuration fixes, users are still experiencing network errors when attempting to create accounts on the deployed site. The backend server is responding to basic requests but user registration specifically fails.
+
+#### **Why This Issue Exists:**
+
+**Root Cause Analysis:**
+
+**1. Backend Server Connectivity Issues:**
+```bash
+# Backend server is responding to basic requests:
+GET https://marcel-borkowski-portfolio-site-backend.onrender.com
+Response: {"message":"Welcome to My Portfolio application.","note":"Frontend is running on http://localhost:5174","api":"http://localhost:3000/api"}
+
+# But registration endpoint fails:
+POST https://marcel-borkowski-portfolio-site-backend.onrender.com/api/users/register
+Error: "The request was aborted: The connection was closed unexpectedly"
+```
+
+**2. Potential CORS Configuration Issues:**
+```javascript
+// Current CORS setup might not be handling all origins properly
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-frontend-domain.netlify.app']
+    : ['http://localhost:5174'],
+  credentials: true
+}));
+
+// Issue: Might be missing the actual Netlify domain
+```
+
+**3. Render.com Cold Start Problems:**
+```javascript
+// Render.com free tier has "spin down" behavior:
+// - Server sleeps after 15 minutes of inactivity
+// - First request after sleep takes 30-60 seconds to wake up
+// - Complex requests (like database operations) may timeout during cold start
+```
+
+**4. Database Connection Timeout:**
+```javascript
+// MongoDB Atlas connection might be timing out on Render
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  // Missing timeout configurations that could help
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+  connectTimeoutMS: 10000,
+});
+```
+
+#### **Current Debugging Status:**
+
+**Confirmed Working:**
+- ✅ Backend server is online and responding to basic requests
+- ✅ Frontend API utility is correctly configured
+- ✅ Environment variables are properly set
+- ✅ Password validation is synchronized
+
+**Still Failing:**
+- ❌ User registration endpoint specifically
+- ❌ Network requests to `/api/users/register` endpoint
+- ❌ Database operations during registration
+
+#### **Potential Solutions Being Investigated:**
+
+**Solution 1: Enhanced CORS Configuration**
+```javascript
+// server/express.js - More permissive CORS for debugging
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5174',
+      'https://marcel-borkowski-portfolio-site.netlify.app',
+      // Add your actual Netlify domain
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+```
+
+**Solution 2: Database Connection Optimization**
+```javascript
+// Improved MongoDB connection with timeouts
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 15000, // 15 seconds
+  connectTimeoutMS: 20000, // 20 seconds
+  maxPoolSize: 10,
+  bufferCommands: false,
+  bufferMaxEntries: 0
+});
+
+// Connection event handlers
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB connected successfully');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+```
+
+**Solution 3: Request Timeout Handling**
+```javascript
+// Add request timeout middleware
+app.use((req, res, next) => {
+  req.setTimeout(30000, () => {
+    console.log('Request timeout for:', req.url);
+    res.status(408).json({
+      success: false,
+      message: 'Request timeout - server is starting up'
+    });
+  });
+  next();
+});
+```
+
+**Solution 4: Frontend Retry Logic**
+```javascript
+// Enhanced API utility with retry logic for cold starts
+export const api = {
+  async request(endpoint, options = {}, retries = 3) {
+    let lastError;
+    
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(`${BASE_URL}${endpoint}`, {
+          ...options,
+          signal: AbortSignal.timeout(30000), // 30 second timeout
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        lastError = error;
+        console.warn(`API request attempt ${i + 1} failed:`, error.message);
+        
+        // If it's a timeout or network error, wait before retrying
+        if (i < retries - 1 && (
+          error.name === 'AbortError' || 
+          error.message.includes('fetch') ||
+          error.message.includes('network')
+        )) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1))); // Exponential backoff
+        }
+      }
+    }
+    
+    throw lastError;
+  }
+};
+```
+
+#### **Next Steps for Resolution:**
+
+1. **Implement Enhanced Error Logging:**
+   - Add detailed logging to backend registration endpoint
+   - Monitor actual error messages from production
+   - Check Render.com logs for server-side errors
+
+2. **Test Render.com Service Status:**
+   - Check if this is a platform-wide issue
+   - Monitor if cold starts are causing the problems
+   - Consider upgrading to paid tier for testing
+
+3. **Alternative API Testing:**
+   - Test with a simple "health check" endpoint first
+   - Gradually test more complex endpoints
+   - Isolate if issue is registration-specific or all POST requests
+
+4. **Frontend Optimization:**
+   - Add loading states for cold start scenarios
+   - Implement user feedback: "Server is starting up, please wait..."
+   - Add retry buttons for failed requests
+
+#### **Key Learning:**
+This ongoing issue demonstrates that deployment debugging often involves multiple layers:
+- **Infrastructure**: Hosting platform limitations (Render.com cold starts)
+- **Network**: CORS, timeouts, connection issues
+- **Database**: Connection pools, timeouts, Atlas configuration
+- **User Experience**: Handling slow/failing requests gracefully
+
+Real-world production debugging requires patience and systematic elimination of potential causes.
+
+---
+
+This debugging experience demonstrates real-world problem-solving skills essential for professional web development. Each issue provided valuable learning opportunities about full-stack application architecture, deployment considerations, and user experience optimization.
+
+---
+
 ## Assignment 3: Full-Stack Integration & Frontend Development
 
 ### **Assignment Overview:**
