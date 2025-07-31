@@ -2338,6 +2338,364 @@ app.listen(PORT, () => {
 });
 ```
 
+### **Week 11: Advanced Authentication & Security**
+
+#### What We Learned:
+- **Multiple Authentication Providers**: OAuth, social login, third-party integrations
+- **Firebase Authentication**: Cloud-based authentication service with comprehensive features
+- **Two-Factor Authentication (2FA)**: Enhanced security with multi-step verification
+- **Authentication Security Assessment**: Testing and validating authentication systems
+- **Provider Comparison**: Understanding features, strengths, and limitations of different auth solutions
+
+#### How It's Applied in This Project:
+
+**Authentication Provider Integration:**
+```javascript
+// Firebase configuration example
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+// Google Sign-In integration
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    throw error;
+  }
+};
+```
+
+**Two-Factor Authentication Implementation:**
+```javascript
+// 2FA middleware for enhanced security
+export const require2FA = async (req, res, next) => {
+  try {
+    const { user } = req;
+    
+    if (user.twoFactorEnabled && !req.session.twoFactorVerified) {
+      return res.status(401).json({
+        success: false,
+        message: '2FA verification required',
+        requiresTwoFactor: true
+      });
+    }
+    
+    next();
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '2FA verification failed'
+    });
+  }
+};
+
+// TOTP (Time-based One-Time Password) generation
+import speakeasy from 'speakeasy';
+
+export const generateTOTPSecret = () => {
+  return speakeasy.generateSecret({
+    name: 'Marcel Portfolio',
+    length: 32
+  });
+};
+
+export const verifyTOTP = (token, secret) => {
+  return speakeasy.totp.verify({
+    secret,
+    token,
+    window: 2 // Allow 2 steps tolerance
+  });
+};
+```
+
+**Authentication Security Assessment:**
+```javascript
+// Security validation middleware
+export const validateAuthSecurity = async (req, res, next) => {
+  const securityChecks = {
+    passwordStrength: validatePasswordStrength(req.body.password),
+    rateLimiting: checkRateLimit(req.ip),
+    deviceFingerprinting: validateDeviceFingerprint(req),
+    suspiciousActivity: detectSuspiciousActivity(req.user)
+  };
+  
+  const failedChecks = Object.entries(securityChecks)
+    .filter(([key, passed]) => !passed)
+    .map(([key]) => key);
+  
+  if (failedChecks.length > 0) {
+    return res.status(403).json({
+      success: false,
+      message: 'Security validation failed',
+      failedChecks
+    });
+  }
+  
+  next();
+};
+```
+
+### **Week 12: Real-Time Features & Modern Architecture**
+
+#### What We Learned:
+- **WebSocket Protocol**: Real-time bidirectional communication between client and server
+- **Socket.IO**: Enhanced WebSocket library with fallbacks and additional features
+- **Real-Time Applications**: Chat systems, live updates, notifications
+- **Jamstack Architecture**: Modern web development approach emphasizing performance and scalability
+- **Decoupled Architecture**: Separation of frontend, backend, and services
+
+#### How It's Applied in This Project:
+
+**WebSocket Implementation:**
+```javascript
+// Server-side WebSocket setup
+import { Server } from 'socket.io';
+import http from 'http';
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL,
+    methods: ["GET", "POST"]
+  }
+});
+
+// Real-time connection handling
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+  
+  // Join user to their personal room for notifications
+  socket.on('join-user-room', (userId) => {
+    socket.join(`user-${userId}`);
+  });
+  
+  // Handle real-time chat messages
+  socket.on('send-message', async (data) => {
+    try {
+      const message = await Message.create(data);
+      io.to(`user-${data.recipientId}`).emit('new-message', message);
+    } catch (error) {
+      socket.emit('message-error', error.message);
+    }
+  });
+  
+  // Live admin notifications
+  socket.on('admin-action', (data) => {
+    io.emit('admin-notification', {
+      type: data.type,
+      message: data.message,
+      timestamp: new Date()
+    });
+  });
+  
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+```
+
+**Real-Time React Components:**
+```jsx
+// Real-time chat component
+import io from 'socket.io-client';
+import { useState, useEffect } from 'react';
+
+const RealTimeChat = ({ userId, recipientId }) => {
+  const [socket, setSocket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  
+  useEffect(() => {
+    // Initialize socket connection
+    const newSocket = io(process.env.REACT_APP_SOCKET_URL, {
+      auth: {
+        token: localStorage.getItem('token')
+      }
+    });
+    
+    setSocket(newSocket);
+    
+    // Connection event handlers
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+      newSocket.emit('join-user-room', userId);
+    });
+    
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+    
+    // Message event handlers
+    newSocket.on('new-message', (message) => {
+      setMessages(prev => [...prev, message]);
+    });
+    
+    newSocket.on('message-error', (error) => {
+      console.error('Message error:', error);
+    });
+    
+    return () => newSocket.close();
+  }, [userId]);
+  
+  const sendMessage = () => {
+    if (newMessage.trim() && socket) {
+      socket.emit('send-message', {
+        senderId: userId,
+        recipientId,
+        content: newMessage,
+        timestamp: new Date()
+      });
+      setNewMessage('');
+    }
+  };
+  
+  return (
+    <div className="real-time-chat">
+      <div className="connection-status">
+        Status: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+      </div>
+      
+      <div className="messages">
+        {messages.map((msg, index) => (
+          <div key={index} className="message">
+            <strong>{msg.senderId === userId ? 'You' : 'Admin'}:</strong>
+            <span>{msg.content}</span>
+            <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+          </div>
+        ))}
+      </div>
+      
+      <div className="message-input">
+        <input
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type a message..."
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+        />
+        <button onClick={sendMessage}>Send</button>
+      </div>
+    </div>
+  );
+};
+```
+
+**Live Admin Dashboard Updates:**
+```jsx
+// Real-time admin notifications
+const AdminDashboard = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [liveStats, setLiveStats] = useState({
+    activeUsers: 0,
+    newContacts: 0,
+    systemStatus: 'healthy'
+  });
+  
+  useEffect(() => {
+    const socket = io(process.env.REACT_APP_SOCKET_URL);
+    
+    // Real-time admin notifications
+    socket.on('admin-notification', (notification) => {
+      setNotifications(prev => [notification, ...prev.slice(0, 9)]);
+    });
+    
+    // Live statistics updates
+    socket.on('stats-update', (stats) => {
+      setLiveStats(stats);
+    });
+    
+    return () => socket.disconnect();
+  }, []);
+  
+  return (
+    <div className="admin-dashboard">
+      <div className="live-stats">
+        <div className="stat-card">
+          <h3>Active Users</h3>
+          <span className="stat-value">{liveStats.activeUsers}</span>
+        </div>
+        <div className="stat-card">
+          <h3>New Contacts</h3>
+          <span className="stat-value">{liveStats.newContacts}</span>
+        </div>
+        <div className="stat-card">
+          <h3>System Status</h3>
+          <span className={`status ${liveStats.systemStatus}`}>
+            {liveStats.systemStatus}
+          </span>
+        </div>
+      </div>
+      
+      <div className="live-notifications">
+        <h3>Live Notifications</h3>
+        {notifications.map((notif, index) => (
+          <div key={index} className="notification">
+            <span className="type">{notif.type}</span>
+            <span className="message">{notif.message}</span>
+            <span className="time">
+              {new Date(notif.timestamp).toLocaleTimeString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+**Jamstack Architecture Implementation:**
+```javascript
+// Static site generation with dynamic features
+// next.config.js (if using Next.js)
+module.exports = {
+  // Static generation for performance
+  output: 'export',
+  
+  // API routes for dynamic functionality
+  rewrites: async () => {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.API_URL}/api/:path*`
+      }
+    ];
+  },
+  
+  // Build-time data fetching
+  generateStaticParams: async () => {
+    const projects = await fetch(`${process.env.API_URL}/api/projects`);
+    return projects.map(project => ({ id: project._id }));
+  }
+};
+
+// Serverless function example
+export default async function handler(req, res) {
+  try {
+    // Connect to database
+    await connectDB();
+    
+    // Handle request
+    const result = await processRequest(req);
+    
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+```
+
 ### **Key Technologies Mastered:**
 1. **JavaScript ES6+**: Modern syntax, classes, modules, async/await
 2. **React**: Component-based UI development with hooks and state management
@@ -2349,6 +2707,11 @@ app.listen(PORT, () => {
 8. **bcrypt**: Password hashing for user security
 9. **Git**: Version control for project management
 10. **REST API**: Architectural style for web services
+11. **WebSockets**: Real-time bidirectional communication
+12. **Firebase**: Cloud authentication and real-time database
+13. **Two-Factor Authentication**: Enhanced security measures
+14. **Socket.IO**: Real-time event-based communication
+15. **Jamstack**: Modern web architecture for performance and scalability
 
 This comprehensive implementation showcases industry-standard practices that employers look for and provides a strong foundation for future web development projects. 🚀
 

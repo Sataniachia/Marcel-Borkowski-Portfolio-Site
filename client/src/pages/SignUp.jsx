@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../utils/api';
 
 /**
  * SignUp page component
@@ -49,6 +50,8 @@ export default function SignUp() {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
     }
     
     if (formData.password !== formData.confirmPassword) {
@@ -67,19 +70,14 @@ export default function SignUp() {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch('/api/users/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password
-        }),
+      console.log('🔄 Attempting user registration...');
+      const result = await api.users.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
       });
 
-      const result = await response.json();
+      console.log('✅ Registration response:', result);
 
       if (result.success) {
         // Auto-login after successful registration
@@ -92,6 +90,8 @@ export default function SignUp() {
           result.errors.forEach(error => {
             if (error.path) {
               serverErrors[error.path] = error.msg;
+            } else if (error.param) {
+              serverErrors[error.param] = error.msg;
             }
           });
           setErrors(serverErrors);
@@ -100,8 +100,8 @@ export default function SignUp() {
         }
       }
     } catch (error) {
-      console.error('Error registering:', error);
-      setErrors({ submit: 'Network error. Please try again.' });
+      console.error('❌ Registration error:', error);
+      setErrors({ submit: `Network error: ${error.message}. Please check your connection and try again.` });
     } finally {
       setIsSubmitting(false);
     }
@@ -209,6 +209,9 @@ export default function SignUp() {
                 onFocus={(e) => e.target.style.borderColor = errors.password ? '#ef4444' : '#667eea'}
                 onBlur={(e) => e.target.style.borderColor = errors.password ? '#ef4444' : '#e2e8f0'}
               />
+              <small style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                Password must contain at least 6 characters with uppercase, lowercase, and a number
+              </small>
               {errors.password && (
                 <span style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
                   {errors.password}
